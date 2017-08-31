@@ -38,14 +38,14 @@ dloc[2] = scipy.io.loadmat(mat_data + '\loc1k_od.mat')['loc1k']
 dloc[3] = scipy.io.loadmat(mat_data + '\loc256_od.mat')['tess256']
 
 
+font = cv2.FONT_HERSHEY_PLAIN
+types = ["RG","GR","RGinv","GRinv","BY","YB","BYinv","YBinv"]
 i = 0
 camid = 1
 cap = cv2.VideoCapture(camid)
 showInverse = True
 showCortex = True
 
-font = cv2.FONT_HERSHEY_PLAIN
-types = ["RG","GR","RGinv","GRinv","BY","YB","BYinv","YBinv"]
 
 print "USER KEYBOARD CONTROLS"
 print " + to increase retina size\n - to decrease retina size"
@@ -75,6 +75,8 @@ def showNonOpponency(C,theta):
     ninv_crop = retina.crop(ninverse,x,y,dloc[i])
     ninverse2 = retina.inverse(nsurrV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=False)
     ninv_crop2 = retina.crop(ninverse2,x,y,dloc[i])
+    cv2.putText(ninv_crop,"R+G + ",(1,270), font, 1,(255,255,255),2)
+    cv2.putText(ninv_crop2,"R+G - ",(1,270), font, 1,(255,255,255),2)
     merged = np.concatenate((ninv_crop, ninv_crop2),axis=1)
     
 
