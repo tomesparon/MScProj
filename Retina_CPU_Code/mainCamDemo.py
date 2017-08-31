@@ -5,13 +5,13 @@
 
 Demoing colour opponency and DoG
 """
-from timeit import default_timer as timer
+
 import cv2
 import numpy as np
-import retina
-import cortex
 import scipy
 import os
+import retina
+import cortex
 import rgc
 
 mat_data = os.getcwd() + os.sep + 'ozv1retinas'
@@ -42,16 +42,14 @@ i = 0
 camid = 1
 cap = cv2.VideoCapture(camid)
 showInverse = True
-showCortex = False
-colourmode = True
-motion = False
-doubleopponency = False
+showCortex = True
+
 font = cv2.FONT_HERSHEY_PLAIN
 types = ["RG","GR","RGinv","GRinv","BY","YB","BYinv","YBinv"]
 
-
-print " +  increase retina size\n -  decrease retina size"
-print " a  cortex autoscaling\nesc exit\n i show inverted retinal image"
+print "USER KEYBOARD CONTROLS"
+print " + to increase retina size\n - to decrease retina size"
+print "esc - exit\ni - Toggle inverted retinal images\nu - Toggle cortical images"
 
 
 #### TRACKBAR
@@ -59,14 +57,75 @@ def nothing(x):
     pass
 cv2.namedWindow("Input", cv2.WINDOW_NORMAL)
 cv2.createTrackbar('theta','Input',0,100,nothing)
+switch = 'Opponency\n'
+cv2.createTrackbar(switch, 'Input',0,1,nothing)
 
 while not cap.isOpened():
     print 'retrying\n'
     cv2.VideoCapture(camid).release()
     cap = cv2.VideoCapture(camid)
     camid -= 1
+def showNonOpponency(C,theta):
 
-def prep():
+        S = retina.sample(lateimg,x,y,dcoeff[i],dloc[i],rgb=True)
+
+        ncentreV,nsurrV = rgc.nonopponency(C,S,theta)
+        ninverse = retina.inverse(ncentreV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=True)
+        ninv_crop = retina.crop(ninverse,x,y,dloc[i])
+        ninverse2 = retina.inverse(nsurrV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=True)
+        ninv_crop2 = retina.crop(ninverse2,x,y,dloc[i])
+        merged = np.concatenate((ninv_crop, ninv_crop2),axis=1)
+        cv2.imshow("Intensity Responses", merged)
+
+        lposnon, rposnon = cortex.cort_img(ncentreV, L, L_loc, R, R_loc, cort_size, G)
+        lnegnon, rnegnon = cortex.cort_img(nsurrV, L, L_loc, R, R_loc, cort_size, G)
+        pos_cort_img = np.concatenate((np.rot90(lposnon),np.rot90(rposnon,k=3)),axis=1)
+        neg_cort_img = np.concatenate((np.rot90(lnegnon),np.rot90(rnegnon,k=3)),axis=1)
+        mergecort = np.concatenate((pos_cort_img,neg_cort_img),axis=1)
+        cv2.namedWindow("Intensity Responses Cortex", cv2.WINDOW_NORMAL)
+        cv2.imshow("Intensity Responses Cortex", mergecort)
+
+
+
+def showBPImg(pV,nV):
+    inv_crop = np.empty(8, dtype=object)
+    inv_crop2 = np.empty(8, dtype=object)
+    for t in range(8):
+            inverse = retina.inverse(pV[:,t,:],x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=True)
+            inv_crop[t] = retina.crop(inverse,x,y,dloc[i])
+
+            inverse2 = retina.inverse(nV[:,t,:],x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=True)
+            inv_crop2[t] = retina.crop(inverse2,x,y,dloc[i])
+
+            cv2.putText(inv_crop[t],types[t] + " + ",(1,270), font, 1,(0,255,255),2)
+            cv2.putText(inv_crop2[t],types[t] + " - ",(1,270), font, 1,(0,255,255),2)
+
+    posRG = np.vstack((inv_crop[:4]))
+    negRG = np.vstack((inv_crop2[:4]))
+    posYB = np.vstack((inv_crop[4:]))
+    negYB = np.vstack((inv_crop2[4:]))
+    merge = np.concatenate((posRG,negRG,posYB,negYB),axis=1)
+    cv2.namedWindow("Backprojected Opponent Cells Output", cv2.WINDOW_NORMAL)
+    cv2.imshow("Backprojected Opponent Cells Output", merge)
+
+def showCortexImg(pV,nV):
+    pos_cort_img = np.empty(8, dtype=object)
+    neg_cort_img = np.empty(8, dtype=object)
+    for t in range(8):
+        lpos, rpos = cortex.cort_img(pV[:,t,:], L, L_loc, R, R_loc, cort_size, G)
+        lneg, rneg = cortex.cort_img(nV[:,t,:], L, L_loc, R, R_loc, cort_size, G)
+        pos_cort_img[t] = np.concatenate((np.rot90(lpos),np.rot90(rpos,k=3)),axis=1)
+        neg_cort_img[t] = np.concatenate((np.rot90(lneg),np.rot90(rneg,k=3)),axis=1)
+
+    posRGcort = np.vstack((pos_cort_img[:4]))
+    negRGcort = np.vstack((neg_cort_img[:4]))
+    posYBcort = np.vstack((pos_cort_img[4:]))
+    negYBcort = np.vstack((neg_cort_img[4:]))
+    mergecort = np.concatenate((posRGcort,negRGcort,posYBcort,negYBcort),axis=1)
+    cv2.namedWindow("Cortex Opponent Cells Output", cv2.WINDOW_NORMAL)
+    cv2.imshow("Cortex Opponent Cells Output", mergecort)
+
+def prepRF():
     global  L, R, L_loc, R_loc, G, cort_size
     L, R = cortex.LRsplit(loc[i])
     L_loc, R_loc = cortex.cort_map(L, R)
@@ -79,114 +138,56 @@ def prep():
     global GI
     GI = retina.gauss_norm_img(x, y, dcoeff[i], dloc[i], imsize=imgsize,rgb=True)
 
-prep()
+prepRF()
 
 
 while True:
-
-
     ret, img = cap.read()
+    ret, lateimg = cap.read()
     if ret is True:
         x = int(img.shape[1]/2)
         y = int(img.shape[0]/2)
         imgsize = (img.shape[0],img.shape[1])
         theta = cv2.getTrackbarPos('theta','Input') / 100.0
-        if motion:
-            ret, lateimg = cap.read()
-            if ret is True:
-                C = retina.sample(img,x,y,coeff[i],loc[i],rgb=colourmode)
-                S = retina.sample(lateimg,x,y,coeff[i],loc[i],rgb=colourmode)
+        rgcMode = cv2.getTrackbarPos(switch,'Input')
+
+ 
+        C = retina.sample(img,x,y,coeff[i],loc[i],rgb=True) # CENTRE
+        S = retina.sample(img,x,y,dcoeff[i],dloc[i],rgb=True) # SURROUND
+        
+        if rgcMode == 0:
+        	pV,nV = rgc.opponency(C,S,theta)
         else:
-            C = retina.sample(img,x,y,coeff[i],loc[i],rgb=colourmode) # CENTRE
-            S = retina.sample(img,x,y,dcoeff[i],dloc[i],rgb=colourmode) # SURROUND
-        
-        if not doubleopponency:centre,surr = rgc.opponency(C,S,theta)
-        else:centre,surr = rgc.doubleopponency(C,S,theta)
-        
-        ncentre,nsurr = rgc.nonopponency(C,S,theta)
-        
+        	pV,nV = rgc.doubleopponency(C,S,theta)
+
         cv2.imshow("Input", img)
+
+        showNonOpponency(C,theta)
         #Generate backprojected images
         if showInverse:
-            ninverse = retina.inverse(ncentre,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=colourmode)
-            ninv_crop = retina.crop(ninverse,x,y,dloc[i])
-
-            ninverse2 = retina.inverse(nsurr,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=colourmode)
-            ninv_crop2 = retina.crop(ninverse2,x,y,dloc[i])
-            merged = np.concatenate((ninv_crop, ninv_crop2),axis=1)
-            cv2.imshow("Intensity Responses", merged)
-
-            inv_crop = np.empty(8, dtype=object)
-            inv_crop2 = np.empty(8, dtype=object)
-            start = timer() # each loop takes 0.2 secs
-            for t in range(8):
-                    inverse = retina.inverse(centre[:,t,:],x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=colourmode)
-                    inv_crop[t] = retina.crop(inverse,x,y,dloc[i])
-
-                    inverse2 = retina.inverse(surr[:,t,:],x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=colourmode)
-                    inv_crop2[t] = retina.crop(inverse2,x,y,dloc[i])
-
-                    cv2.putText(inv_crop[t],types[t] + " + ",(1,270), font, 1,(0,255,255),2)
-                    cv2.putText(inv_crop2[t],types[t] + " - ",(1,270), font, 1,(0,255,255),2)
-
-            posRG = np.vstack((inv_crop[:4]))
-            negRG = np.vstack((inv_crop2[:4]))
-            posYB = np.vstack((inv_crop[4:]))
-            negYB = np.vstack((inv_crop2[4:]))
-            merge = np.concatenate((posRG,negRG,posYB,negYB),axis=1)
-
-            end = timer()
-            print(end - start)
-            cv2.namedWindow("Backprojected Opponent Cells Output", cv2.WINDOW_NORMAL)
-            
-            cv2.imshow("Backprojected Opponent Cells Output", merge)
+            showBPImg(pV,nV)
         # Cortex
         if showCortex:
-            pos_cort_img = np.empty(8, dtype=object)
-            neg_cort_img = np.empty(8, dtype=object)
-            for t in range(8):
-                lpos, rpos = cortex.cort_img(centre[:,t,:], L, L_loc, R, R_loc, cort_size, G)
-                lneg, rneg = cortex.cort_img(surr[:,t,:], L, L_loc, R, R_loc, cort_size, G)
-                pos_cort_img[t] = np.concatenate((np.rot90(lpos),np.rot90(rpos,k=3)),axis=1)
-                neg_cort_img[t] = np.concatenate((np.rot90(lneg),np.rot90(rneg,k=3)),axis=1)
-                # cv2.putText(pos_cort_img[t],types[t] + " + ",(1,1), font, 1,(0,255,255),2)
-                # cv2.putText(neg_cort_img[t],types[t] + " - ",(1,1), font, 1,(0,255,255),2)
+            showCortexImg(pV,nV)
 
-            posRGcort = np.vstack((pos_cort_img[:4]))
-            negRGcort = np.vstack((neg_cort_img[:4]))
-            posYBcort = np.vstack((pos_cort_img[4:]))
-            negYBcort = np.vstack((neg_cort_img[4:]))
-            mergecort = np.concatenate((posRGcort,negRGcort,posYBcort,negYBcort),axis=1)
-            cv2.namedWindow("Cortex Opponent Cells Output", cv2.WINDOW_NORMAL)
-            cv2.imshow("Cortex Opponent Cells Output", mergecort)
         # Response to key input settings
         key = cv2.waitKey(10)
         if key == 43: ##check for '+'' key on numpad
             if i != 0: 
                 i -= 1
-                prep()
+                prepRF()
         elif key == 45: #check for '-'' key on numpad
             if i != 3: 
                 i += 1
-                prep()
+                prepRF()
         elif key == 117: #check for 'u' key
             cv2.destroyWindow("Cortex Opponent Cells Output")
             cv2.destroyWindow("Backprojected Opponent Cells Output")
-            cv2.destroyWindow("Intensity Responses")
             showCortex = not showCortex
         elif key == 105: #check for 'i' key
             cv2.destroyWindow("Cortex Opponent Cells Output")
             cv2.destroyWindow("Backprojected Opponent Cells Output")
-            cv2.destroyWindow("Intensity Responses")
             showInverse = not showInverse
-        elif key == 111: # check for 'o' key
-            # cv2.destroyWindow("Backprojected Opponent Cells Output")
-            doubleopponency = not doubleopponency
-            print "Switching double opponency to " + str(doubleopponency)
-        elif key == 111: # check for 'o' key
-            # cv2.destroyWindow("Backprojected Opponent Cells Output")
-            motion = not motion
-            print "Switching temporal response to " + str(motion)
         elif key == 27: #check for ESC key on numpad
             break
 
