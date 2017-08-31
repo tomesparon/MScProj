@@ -145,8 +145,8 @@ def nonopponency(C,S,theta):
     surr[np.where(surr >= theta)] = 0.0
 
     #add back channels
-    pdiff = np.stack((centre,centre,centre),axis=-1)
-    ndiff = np.stack((surr,surr,surr),axis=-1)
+    pdiff = centre#np.stack((centre,centre,centre),axis=-1)
+    ndiff = surr#np.stack((surr,surr,surr),axis=-1)
 
     pdiff,ndiff = scaling(pdiff,ndiff)
     return pdiff,ndiff

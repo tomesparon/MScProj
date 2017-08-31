@@ -65,14 +65,15 @@ while not cap.isOpened():
     cv2.VideoCapture(camid).release()
     cap = cv2.VideoCapture(camid)
     camid -= 1
+
 def showNonOpponency(C,theta):
 
         S = retina.sample(lateimg,x,y,dcoeff[i],dloc[i],rgb=True)
 
         ncentreV,nsurrV = rgc.nonopponency(C,S,theta)
-        ninverse = retina.inverse(ncentreV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=True)
+        ninverse = retina.inverse(ncentreV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=False)
         ninv_crop = retina.crop(ninverse,x,y,dloc[i])
-        ninverse2 = retina.inverse(nsurrV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=True)
+        ninverse2 = retina.inverse(nsurrV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=False)
         ninv_crop2 = retina.crop(ninverse2,x,y,dloc[i])
         merged = np.concatenate((ninv_crop, ninv_crop2),axis=1)
         cv2.imshow("Intensity Responses", merged)
