@@ -68,23 +68,23 @@ while not cap.isOpened():
 
 def showNonOpponency(C,theta):
 
-        S = retina.sample(lateimg,x,y,dcoeff[i],dloc[i],rgb=True)
+    S = retina.sample(lateimg,x,y,dcoeff[i],dloc[i],rgb=True)
 
-        ncentreV,nsurrV = rgc.nonopponency(C,S,theta)
-        ninverse = retina.inverse(ncentreV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=False)
-        ninv_crop = retina.crop(ninverse,x,y,dloc[i])
-        ninverse2 = retina.inverse(nsurrV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=False)
-        ninv_crop2 = retina.crop(ninverse2,x,y,dloc[i])
-        merged = np.concatenate((ninv_crop, ninv_crop2),axis=1)
-        cv2.imshow("Intensity Responses", merged)
+    ncentreV,nsurrV = rgc.nonopponency(C,S,theta)
+    ninverse = retina.inverse(ncentreV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=False)
+    ninv_crop = retina.crop(ninverse,x,y,dloc[i])
+    ninverse2 = retina.inverse(nsurrV,x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=False)
+    ninv_crop2 = retina.crop(ninverse2,x,y,dloc[i])
+    merged = np.concatenate((ninv_crop, ninv_crop2),axis=1)
+    
 
-        lposnon, rposnon = cortex.cort_img(ncentreV, L, L_loc, R, R_loc, cort_size, G)
-        lnegnon, rnegnon = cortex.cort_img(nsurrV, L, L_loc, R, R_loc, cort_size, G)
-        pos_cort_img = np.concatenate((np.rot90(lposnon),np.rot90(rposnon,k=3)),axis=1)
-        neg_cort_img = np.concatenate((np.rot90(lnegnon),np.rot90(rnegnon,k=3)),axis=1)
-        mergecort = np.concatenate((pos_cort_img,neg_cort_img),axis=1)
-        cv2.namedWindow("Intensity Responses Cortex", cv2.WINDOW_NORMAL)
-        cv2.imshow("Intensity Responses Cortex", mergecort)
+    lposnon, rposnon = cortex.cort_img(ncentreV, L, L_loc, R, R_loc, cort_size, G)
+    lnegnon, rnegnon = cortex.cort_img(nsurrV, L, L_loc, R, R_loc, cort_size, G)
+    pos_cort_img = np.concatenate((np.rot90(lposnon),np.rot90(rposnon,k=3)),axis=1)
+    neg_cort_img = np.concatenate((np.rot90(lnegnon),np.rot90(rnegnon,k=3)),axis=1)
+    mergecort = np.concatenate((pos_cort_img,neg_cort_img),axis=1)
+    return merged, mergecort
+        
 
 
 
@@ -106,8 +106,8 @@ def showBPImg(pV,nV):
     posYB = np.vstack((inv_crop[4:]))
     negYB = np.vstack((inv_crop2[4:]))
     merge = np.concatenate((posRG,negRG,posYB,negYB),axis=1)
-    cv2.namedWindow("Backprojected Opponent Cells Output", cv2.WINDOW_NORMAL)
-    cv2.imshow("Backprojected Opponent Cells Output", merge)
+    return merge
+
 
 def showCortexImg(pV,nV):
     pos_cort_img = np.empty(8, dtype=object)
@@ -123,8 +123,7 @@ def showCortexImg(pV,nV):
     posYBcort = np.vstack((pos_cort_img[4:]))
     negYBcort = np.vstack((neg_cort_img[4:]))
     mergecort = np.concatenate((posRGcort,negRGcort,posYBcort,negYBcort),axis=1)
-    cv2.namedWindow("Cortex Opponent Cells Output", cv2.WINDOW_NORMAL)
-    cv2.imshow("Cortex Opponent Cells Output", mergecort)
+    return mergecort
 
 def prepRF():
     global  L, R, L_loc, R_loc, G, cort_size
@@ -163,13 +162,20 @@ while True:
 
         cv2.imshow("Input", img)
 
-        showNonOpponency(C,theta)
+        rIntensity,cIntensity = showNonOpponency(C,theta)
+        cv2.imshow("Intensity Responses", rIntensity)
+        cv2.namedWindow("Intensity Responses Cortex", cv2.WINDOW_NORMAL)
+        cv2.imshow("Intensity Responses Cortex", cIntensity)
         #Generate backprojected images
         if showInverse:
-            showBPImg(pV,nV)
+            rOpponent = showBPImg(pV,nV)
+            cv2.namedWindow("Backprojected Opponent Cells Output", cv2.WINDOW_NORMAL)
+            cv2.imshow("Backprojected Opponent Cells Output", rOpponent)
         # Cortex
         if showCortex:
-            showCortexImg(pV,nV)
+            cOpponent = showCortexImg(pV,nV)
+            cv2.namedWindow("Cortex Opponent Cells Output", cv2.WINDOW_NORMAL)
+            cv2.imshow("Cortex Opponent Cells Output", cOpponent)
 
         # Response to key input settings
         key = cv2.waitKey(10)

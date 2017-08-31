@@ -65,7 +65,7 @@ def showNonOpponency(C,theta):
     
     S = ret1.sample(lateimg) # SURROUND
     S = retina_cuda.convert_to_Piotr(S)
-
+    #showretina
     ncentreV,nsurrV = rgc.nonopponency(C,S,theta)
     ninverse = ret0.inverse(retina_cuda.convert_from_Piotr(ncentreV.astype(float)))
     ninv_crop = retina.crop(ninverse,int(img.shape[1]/2), int(img.shape[0]/2),loc[0])
@@ -77,10 +77,8 @@ def showNonOpponency(C,theta):
     cv2.putText(ninv_crop2,"R+G - ",(1,270), font, 1,(0,255,255),2)
 
     merged = np.concatenate((ninv_crop, ninv_crop2),axis=1)
-    cv2.namedWindow("Intensity Responses", cv2.WINDOW_NORMAL)
-    cv2.imshow("Intensity Responses", merged)
-
-    #ifshowcortex
+    
+    #showcortex
     lposnon = cort0.cort_image_left(retina_cuda.convert_from_Piotr(ncentreV.astype(float)))
     rposnon = cort0.cort_image_right(retina_cuda.convert_from_Piotr(ncentreV.astype(float)))
     lnegnon = cort1.cort_image_left(retina_cuda.convert_from_Piotr(nsurrV.astype(float)))
@@ -89,8 +87,7 @@ def showNonOpponency(C,theta):
     neg_cort_img_non = np.concatenate((np.rot90(lnegnon),np.rot90(rnegnon,k=3)),axis=1)
 
     mergedcortex = np.concatenate((pos_cort_img_non, neg_cort_img_non),axis=1)
-    cv2.namedWindow("Intensity Responses Cortex", cv2.WINDOW_NORMAL)
-    cv2.imshow("Intensity Responses Cortex", mergedcortex)
+    return merged,mergedcortex
 
 
 def showBPImg(pV,nV):
@@ -109,8 +106,8 @@ def showBPImg(pV,nV):
     posYB = np.vstack((inv_crop[4:]))
     negYB = np.vstack((inv_crop2[4:]))
     merge = np.concatenate((posRG,negRG,posYB,negYB),axis=1)
-    cv2.namedWindow("Backprojected Opponent Cells Output", cv2.WINDOW_NORMAL)
-    cv2.imshow("Backprojected Opponent Cells Output", merge)
+    return merge
+
 
 
 def showCortexImg(pV,nV):
@@ -131,8 +128,8 @@ def showCortexImg(pV,nV):
     posYBcort = np.vstack((pos_cort_img[4:]))
     negYBcort = np.vstack((neg_cort_img[4:]))
     mergecort = np.concatenate((posRGcort,negRGcort,posYBcort,negYBcort),axis=1)
-    cv2.namedWindow("Cortex Opponent Cells Output", cv2.WINDOW_NORMAL)
-    cv2.imshow("Cortex Opponent Cells Output", mergecort)
+    return mergecort
+
 
 
 showInverse = True
@@ -187,15 +184,21 @@ while True:
         else:
             pV, nV = rgc.doubleopponency(C, S,theta)
 
-        showNonOpponency(C, theta)
-
+        rIntensity,cIntensity = showNonOpponency(C, theta)
+        cv2.namedWindow("Intensity Responses", cv2.WINDOW_NORMAL)
+        cv2.imshow("Intensity Responses", rIntensity)
+        cv2.namedWindow("Intensity Responses Cortex", cv2.WINDOW_NORMAL)
+        cv2.imshow("Intensity Responses Cortex", cIntensity)
         #backPorjected Opponency
         if showInverse:    
-            showBPImg(pV,nV)
+            rOpponent = showBPImg(pV,nV)
+            cv2.namedWindow("Backprojected Opponent Cells Output", cv2.WINDOW_NORMAL)
+            cv2.imshow("Backprojected Opponent Cells Output", rOpponent)
         # Cortex
         if showCortex:
-            showCortexImg(pV,nV)
-
+            cOpponent = showCortexImg(pV,nV)
+            cv2.namedWindow("Cortex Opponent Cells Output", cv2.WINDOW_NORMAL)
+            cv2.imshow("Cortex Opponent Cells Output", cOpponent)
         # Response to key input settings
         key = cv2.waitKey(10)
         if key == 43: ##check for '+'' key on numpad
