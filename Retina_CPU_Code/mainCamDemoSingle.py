@@ -39,17 +39,31 @@ dloc[3] = scipy.io.loadmat(mat_data + '\loc256_od.mat')['tess256']
 
 
 i = 0
-camid = 1
-cap = cv2.VideoCapture(camid)
 showInverse = True
 showCortex = True
 
 font = cv2.FONT_HERSHEY_PLAIN
 types = ["RG","GR","RGinv","GRinv","BY","YB","BYinv","YBinv"]
 
+useVideo = False
 print "USER KEYBOARD CONTROLS"
 print " + to increase retina size\n - to decrease retina size"
 print "esc - exit\ni - Toggle inverted retinal images\nu - Toggle cortical images"
+
+if useVideo:
+    camid = os.getcwd() + os.sep + 'testvideo'+ os.sep +'vtest.webm'
+    cap = cv2.VideoCapture(camid)
+    camid = os.getcwd() + os.sep + 'testvideo'+ os.sep +'vtest.webm'
+    cap = cv2.VideoCapture(camid)
+else:
+    camid = 1
+    cap = cv2.VideoCapture(camid)
+    while not cap.isOpened():
+        print 'retrying\n'
+        cv2.VideoCapture(camid).release()
+        cap = cv2.VideoCapture(camid)
+        camid += 1
+ret, img = cap.read()
 
 
 #### TRACKBAR
@@ -62,11 +76,7 @@ cv2.createTrackbar(switch, 'Input',0,1,nothing)
 species = "Species\n"
 cv2.createTrackbar(species, 'Input',0,7,nothing)
 
-while not cap.isOpened():
-    print 'retrying\n'
-    cv2.VideoCapture(camid).release()
-    cap = cv2.VideoCapture(camid)
-    camid -= 1
+
 
 def showNonOpponency(C,theta):
 

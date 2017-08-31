@@ -52,6 +52,34 @@ dloc[3] = scipy.io.loadmat(mat_data + '\loc256_od.mat')['tess256']
 font = cv2.FONT_HERSHEY_PLAIN
 types = ["RG","GR","RGinv","GRinv","BY","YB","BYinv","YBinv"]
 
+
+showInverse = True
+showCortex = True
+useVideo = True
+print "USER KEYBOARD CONTROLS"
+print " + to increase retina size\n - to decrease retina size"
+print "esc - exit\ni - Toggle inverted retinal images\nu - Toggle cortical images"
+
+if useVideo:
+    camid = os.getcwd() + os.sep + 'testvideo'+ os.sep +'vtest.webm'
+    cap = cv2.VideoCapture(camid)
+    camid = os.getcwd() + os.sep + 'testvideo'+ os.sep +'vtest.webm'
+    cap = cv2.VideoCapture(camid)
+else:
+    camid = 1
+    cap = cv2.VideoCapture(camid)
+    while not cap.isOpened():
+        print 'retrying\n'
+        cv2.VideoCapture(camid).release()
+        cap = cv2.VideoCapture(camid)
+        camid += 1
+
+
+ret, img = cap.read()
+
+
+
+
 #### TRACKBAR
 def nothing(x):
     pass
@@ -132,22 +160,8 @@ def showCortexImg(pV,nV):
 
 
 
-showInverse = True
-showCortex = True
-camid = 1
-cap = cv2.VideoCapture(camid)
-
-print "USER KEYBOARD CONTROLS"
-print " + to increase retina size\n - to decrease retina size"
-print "esc - exit\ni - Toggle inverted retinal images\nu - Toggle cortical images"
-while not cap.isOpened():
-    print 'retrying\n'
-    cv2.VideoCapture(camid).release()
-    cap = cv2.VideoCapture(camid)
-    camid += 1
 
 
-ret, img = cap.read()
 
 def prepRF(p):
     ret0 = retina_cuda.create_retina(loc[p], coeff[p], img.shape, (int(img.shape[1]/2), int(img.shape[0]/2)))
@@ -158,6 +172,7 @@ def prepRF(p):
 
 ret0,ret1,cort0,cort1 = prepRF(0)
 p = 0
+
 while True:
     ret, img = cap.read()
     ret, lateimg = cap.read()
