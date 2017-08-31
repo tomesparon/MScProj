@@ -61,17 +61,16 @@ switch = 'Opponency\n'
 cv2.createTrackbar(switch, 'Input',0,1,nothing)
 
 
-def showNonOpponency(theta):
-    C = ret0.sample(img) # CENTRE
+def showNonOpponency(C,theta):
+    
     S = ret1.sample(lateimg) # SURROUND
-    C = retina_cuda.convert_to_Piotr(C)
     S = retina_cuda.convert_to_Piotr(S)
 
-    ncentre,nsurr = rgc.nonopponency(C,S,theta)
-    ninverse = ret0.inverse(retina_cuda.convert_from_Piotr(ncentre.astype(float)))
+    ncentreV,nsurrV = rgc.nonopponency(C,S,theta)
+    ninverse = ret0.inverse(retina_cuda.convert_from_Piotr(ncentreV.astype(float)))
     ninv_crop = retina.crop(ninverse,int(img.shape[1]/2), int(img.shape[0]/2),loc[0])
    
-    ninverse2 = ret1.inverse(retina_cuda.convert_from_Piotr(nsurr.astype(float)))
+    ninverse2 = ret1.inverse(retina_cuda.convert_from_Piotr(nsurrV.astype(float)))
     ninv_crop2 = retina.crop(ninverse2,int(img.shape[1]/2), int(img.shape[0]/2),dloc[0])
 
     cv2.putText(ninv_crop,"R+G + ",(1,270), font, 1,(0,255,255),2)
@@ -82,10 +81,10 @@ def showNonOpponency(theta):
     cv2.imshow("Intensity Responses", merged)
 
     #ifshowcortex
-    lposnon = cort0.cort_image_left(retina_cuda.convert_from_Piotr(ncentre.astype(float)))
-    rposnon = cort0.cort_image_right(retina_cuda.convert_from_Piotr(ncentre.astype(float)))
-    lnegnon = cort1.cort_image_left(retina_cuda.convert_from_Piotr(nsurr.astype(float)))
-    rnegnon = cort1.cort_image_right(retina_cuda.convert_from_Piotr(nsurr.astype(float)))
+    lposnon = cort0.cort_image_left(retina_cuda.convert_from_Piotr(ncentreV.astype(float)))
+    rposnon = cort0.cort_image_right(retina_cuda.convert_from_Piotr(ncentreV.astype(float)))
+    lnegnon = cort1.cort_image_left(retina_cuda.convert_from_Piotr(nsurrV.astype(float)))
+    rnegnon = cort1.cort_image_right(retina_cuda.convert_from_Piotr(nsurrV.astype(float)))
     pos_cort_img_non = np.concatenate((np.rot90(lposnon),np.rot90(rposnon,k=3)),axis=1)
     neg_cort_img_non = np.concatenate((np.rot90(lnegnon),np.rot90(rnegnon,k=3)),axis=1)
 
@@ -138,9 +137,12 @@ def showCortexImg(pV,nV):
 
 showInverse = True
 showCortex = True
-
 camid = 1
 cap = cv2.VideoCapture(camid)
+
+print "USER KEYBOARD CONTROLS"
+print " + to increase retina size\n - to decrease retina size"
+print "esc - exit\ni - Toggle inverted retinal images\nu - Toggle cortical images"
 while not cap.isOpened():
     print 'retrying\n'
     cv2.VideoCapture(camid).release()
@@ -185,7 +187,7 @@ while True:
         else:
             pV, nV = rgc.doubleopponency(C, S,theta)
 
-        showNonOpponency(theta)
+        showNonOpponency(C, theta)
 
         #backPorjected Opponency
         if showInverse:    
