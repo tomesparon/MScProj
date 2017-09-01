@@ -178,12 +178,13 @@ def imagetestplt(thetainput,doubleopponencyinput):
     # cv2.imshow("Input", img)
     rIntensity,cIntensity = showNonOpponency(C,theta)
 
-    plt.subplot(3,1,1), plt.imshow(cv2.cvtColor(rIntensity, cv2.COLOR_BGR2RGB)), plt.title('Backprojected R+G Intensity Response')
+    plt.subplot(3,1,1), plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)), plt.title('Original test image')
     plt.xticks([]), plt.yticks([])
-    plt.subplot(3,1,2), plt.imshow(cv2.cvtColor(cIntensity, cv2.COLOR_BGR2RGB)), plt.title('Cortical R+G Intensity Response')
+    plt.subplot(3,1,2), plt.imshow(cv2.cvtColor(rIntensity, cv2.COLOR_BGR2RGB)), plt.title('Backprojected R+G Intensity Response')
     plt.xticks([]), plt.yticks([])
-    plt.subplot(3,1,3), plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)), plt.title('Original test image')
+    plt.subplot(3,1,3), plt.imshow(cv2.cvtColor(cIntensity, cv2.COLOR_BGR2RGB)), plt.title('Cortical R+G Intensity Response')
     plt.xticks([]), plt.yticks([])
+
     thetastring = "%.2f" % theta
     plt.suptitle('Rectified DoG Intensity Images. Threshold:' + thetastring, fontsize=16)
     plt.show()
