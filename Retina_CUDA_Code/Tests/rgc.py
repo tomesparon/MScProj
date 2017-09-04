@@ -1,50 +1,80 @@
+"""
+
+Model for colour opponency and DoG retinal cells
+@author: Tom Esparon
+"""
 import numpy as np
 import cv2
 
 def opponency(C, S, theta):
+    """Summary
+    Function to generate all modified imagevectors that exhibit single colour opponency
+    Args:
+        C (vector): The sharp retina is passed to the function, 
+                    representing the centre of the receptive field
+        S (vector): The blurred retina is passed to the function, 
+                    representing the surround of the receptive field
+        theta (float): Used to filter imagevector values above and below a threshold
+    
+    Returns:
+        scentre: Return the positive rectified imagevector
+        ssurr: Return the negative rectified imagevector
+    """
+    # Slices of the B G R channels of the input imagevectors
     bluecentre = C[:,0]
     greencentre = C[:,1]
     redcentre = C[:,2]
     bluesurr = S[:,0]
     greensurr = S[:,1]
     redsurr = S[:,2]
-    
+    # empty float array to store the generated imagevectors
     diff = np.empty((bluecentre.shape[0],8), dtype='float')
-
+    # Generate each species
     diff[:,0] =  (redcentre - greensurr)/(redcentre + greensurr) #R-ON CENTRE/ G-OFF SURROUND
-
     diff[:,1] = (greencentre - redsurr)/(greencentre + redsurr) #  G-ON CENTRE/ R-OFF SURROUND
-  
     diff[:,2] = (greensurr - redcentre)/(greensurr + redcentre) #  R-OFF CENTRE/ G-ON SURROUND
-
     diff[:,3] = (redsurr - greencentre)/(redsurr + greencentre) #  G-OFF CENTRE/ R-ON SURROUND
-
     diff[:,4] =  (bluecentre - (greensurr+redsurr)/2)/(bluecentre + (greensurr+redsurr)/2)#B-ON CENTRE/ Y-OFF SURROUND
-
     diff[:,5] =  ((greencentre+redcentre)/2 - bluesurr)/((greencentre+redcentre)/2 + bluesurr)#Y-ON CENTRE/ B-OFF SURROUND
-
     diff[:,6] =  ((greensurr+redsurr)/2 - bluecentre)/((greensurr+redsurr)/2 + bluecentre)#B-OFF CENTRE/ Y-On SURROUND
-
     diff[:,7] = (bluesurr - (greencentre+redcentre)/2)/(bluesurr + (greencentre+redcentre)/2)#Y-OFF CENTRE/ B-On SURROUND
-
+    # make two copies of the array for further modification
     centre = diff.copy()
     surr = diff.copy()
+    # Zero areas that fall outside of threshold
     centre[np.where(centre <= -theta)] = 0.0
     surr[np.where(surr >= theta)] = 0.0
+    # add back channels
     tricentre,trisurr = addchannels(centre,surr)
+    # correct scaling
     scentre,ssurr = scaling(tricentre,trisurr)
     return scentre,ssurr
 
 
 def doubleopponency(C, S, theta):
+    """Summary
+    Function to generate all modified imagevectors that exhibit double colour opponency
+    Args:
+        C (vector): The sharp retina is passed to the function, 
+                    representing the centre of the receptive field
+        S (vector): The blurred retina is passed to the function, 
+                    representing the surround of the receptive field
+        theta (float): Used to filter imagevector values above and below a threshold
+    
+    Returns:
+        scentre: Return the positive rectified imagevector
+        ssurr: Return the negative rectified imagevector
+    """
+    # Slices of the B G R channels of the input imagevectors
     bluecentre = C[:,0]
     greencentre = C[:,1]
     redcentre = C[:,2]
     bluesurr = S[:,0]
     greensurr = S[:,1]
     redsurr = S[:,2]
+    # empty float array to store the generated imagevectors
     diff = np.empty((bluecentre.shape[0],8), dtype='float')
-    
+    # Generate each species
     diff[:,0] =  (redcentre - greencentre)/(redcentre + greencentre) 
     diff[:,0]+= (greensurr - redsurr)/(greensurr + redsurr)                          #RG ON CENTRE - GR SURROUND 
     
@@ -68,24 +98,37 @@ def doubleopponency(C, S, theta):
     
     diff[:,7] = (bluesurr - (greensurr+redsurr/2))/(bluesurr + (greensurr+redcentre/2)) 
     diff[:,7]+= ((greencentre+redcentre/2) - bluecentre)/((greencentre+redcentre/2) + bluecentre) #YB SURROUND - BY CENTRE
-
+    # make two copies of the array for further modification
     centre = diff.copy()
     surr = diff.copy()
     # Zero areas that fall outside of threshold
     centre[np.where(centre <= -theta)] = 0.0
     surr[np.where(surr >= theta)] = 0.0
-
+    # add back channels
     tricentre,trisurr = addchannels(centre,surr)
+    # correct scaling
     scentre,ssurr = scaling(tricentre,trisurr)
     return scentre,ssurr
 
 
 def addchannels(centre,surr):
-    #B G R#
+    """Summary
+        Add two more channels to the 1 dimensional imagevector to create a 3 channel imagevector
+    Args:
+        centre (vector): Imagevector of the positive rectified centre response
+        surr (vector): Imagevector of the negative rectified surround response
+    
+    Returns:
+        pdiff: 3D imagevector of the positive rectified centre response
+        ndiff: 3D imagevector of the negative rectified surround response
+    """
+    #Empty 3d arrays of the same dimensions as the input arrays
     pdiff = np.empty((centre.shape[0],centre.shape[1],3), dtype='float')
     ndiff = np.empty((surr.shape[0],surr.shape[1],3), dtype='float')
+    # Array of zeros for the other channels
     zero = np.zeros(centre[:,0].shape)
-    # centre.shape is (8192, 8)
+
+    # Place the correct colour into the right channel
     pzero = np.stack((zero,zero,centre[:,0]),axis=-1)
     nzero = np.stack((zero,surr[:,0],zero),axis=-1)
     ptwo = np.stack((zero,zero,centre[:,2]),axis=-1)
@@ -106,7 +149,7 @@ def addchannels(centre,surr):
     psev = np.stack((zero,centre[:,7],centre[:,7]),axis=-1)
     nsev = np.stack((surr[:,7],zero,zero),axis=-1)
 
-    # print pdiff.shape
+    # place right species in order
     pdiff[:,0,:] = pzero
     ndiff[:,0,:] = nzero
     pdiff[:,1,:] = pone
@@ -127,6 +170,19 @@ def addchannels(centre,surr):
     return pdiff,ndiff
 
 def nonopponency(C,S,theta):
+    """Summary
+   Function to generate modified imagevectors that exhibit spatiotemporal ganglion cell response
+    Args:
+        C (vector): The sharp retina is passed to the function, 
+                    representing the centre of the receptive field
+        S (vector): The blurred retina is passed to the function, 
+                    representing the surround of the receptive field
+        theta (float): Used to filter imagevector values above and below a threshold
+    
+    Returns:
+        pdiff: Return the positive rectified imagevector
+        ndiff: Return the negative rectified imagevector
+    """
     redcentre = C[:,2]
     redsurr = S[:,2]
     greencentre = C[:,1]
@@ -134,7 +190,7 @@ def nonopponency(C,S,theta):
 
     pdiff = np.empty((redcentre.shape[0],3), dtype='float')
     ndiff = np.empty((redcentre.shape[0],3), dtype='float')
-    # zero = np.zeros(redcentre.shape)
+    
 
     rgcentre = (redcentre + greencentre)
     rgsurr = (redsurr + greensurr)
@@ -152,6 +208,15 @@ def nonopponency(C,S,theta):
     return pdiff,ndiff
 
 def scaling(centre,surr):
+    """Summary
+    Scaling function
+    Args:
+        centre (vector): Pass an imagevector for centre response
+        surr (vector): Pass an imagevector for surround response
+    Returns:
+        scentre (vector): Return scaled imagevector for centre response
+        ssurr (vector): Return scaled imagevector for surround response
+    """
     ncentre = cv2.normalize(centre, None, 0.0, 1.0, cv2.NORM_MINMAX)
     nsurr = cv2.normalize(surr, None, -1.0,0.0, cv2.NORM_MINMAX)
     scentre = cv2.convertScaleAbs(ncentre, alpha=255)

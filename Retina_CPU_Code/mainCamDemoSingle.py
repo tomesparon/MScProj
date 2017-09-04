@@ -165,7 +165,7 @@ def showCortexImg(pV,nV,t):
     Returns:
         mergecort: Return a merged image of all cortical opponent cells as a numpy image array
     """
-    # t = 1
+    
     lpos, rpos = cortex.cort_img(pV[:,t,:], L, L_loc, R, R_loc, cort_size, G)
     lneg, rneg = cortex.cort_img(nV[:,t,:], L, L_loc, R, R_loc, cort_size, G)
     pos_cort_img = np.concatenate((np.rot90(lpos),np.rot90(rpos,k=3)),axis=1)
@@ -219,7 +219,7 @@ while True:
         	pV,nV = rgc.opponency(C,S,theta)
         else:
         	pV,nV = rgc.doubleopponency(C,S,theta)
-            
+
         # Display functions
         cv2.imshow("Input", img)
 

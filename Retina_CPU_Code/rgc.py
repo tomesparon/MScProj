@@ -191,7 +191,7 @@ def nonopponency(C,S,theta):
 
     pdiff = np.empty((redcentre.shape[0],3), dtype='float')
     ndiff = np.empty((redcentre.shape[0],3), dtype='float')
-    # zero = np.zeros(redcentre.shape)
+    
 
     rgcentre = (redcentre + greencentre)
     rgsurr = (redsurr + greensurr)
@@ -209,7 +209,7 @@ def nonopponency(C,S,theta):
 
 def scaling(centre,surr):
     """Summary
-    
+    Scaling function
     Args:
         centre (vector): Pass an imagevector for centre response
         surr (vector): Pass an imagevector for surround response

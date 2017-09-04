@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Demoing colour opponency and DoG retinal cells with a webcam
+
+CPU VERSION
 @author: Tom Esparon
 
 
@@ -213,7 +215,7 @@ prepRF()
 # repeat for every new frame
 while True:
     ret, img = cap.read()
-    ret, lateimg = cap.read()
+    ret, lateimg = cap.read() # for temporal responses
     if ret is True:
     	# get image frame properties
         x = int(img.shape[1]/2)

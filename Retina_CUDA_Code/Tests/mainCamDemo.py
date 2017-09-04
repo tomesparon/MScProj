@@ -1,11 +1,24 @@
-#!/usr/bin/python
-
 # -*- coding: utf-8 -*-
 """
+Demoing colour opponency and DoG retinal cells with a webcam with CUDA
 
+GPU VERSION
 @author: Tom Esparon
 
-Demoing colour opponency and DoG with CUDA
+
+
+Attributes:
+    coeff (list): Index of receptive field coefficients for a sharp retina
+    dcoeff (list): Index of receptive field coefficients for larger 1.6x retina
+    loc (list): Index of receptive field coefficients for a sharp retina
+    dloc (list): Index of receptive field coefficients for larger 1.6x retina
+    font (TYPE): Declared a font type for descriptions of cell types
+    p (int): Integer index of the currently selected retina size
+    mat_data (TYPE): Directory location of MAT files
+    showCortex (bool): Boolean toggle to show/hide the cortical images
+    showInverse (bool): Boolean toggle to show/hide the inverted images
+    types (list): List of cell type abbreviated descriptions
+    useVideo (bool): Boolean toggle for using a video stream instead
 """
 
 import cv2
@@ -16,13 +29,13 @@ import scipy.io
 import sys
 sys.path.append('../py')
 sys.path.append('../py/Piotr_Ozimek_retina')
-import retina_cuda
-import cortex_cuda
-import retina
-# import cortex
+import retina_cuda #Lorinc Balog retina wrapper
+import cortex_cuda #Lorinc Balog cortex wrapper
+import retina # Piotr Ozimek retina model
+# import cortex # Piotr Ozimek cortex model .not required
 import rgc
 import os
-# import itertools
+
 
 
 
@@ -63,8 +76,6 @@ print "esc - exit\ni - Toggle inverted retinal images\nu - Toggle cortical image
 if useVideo:
     camid = os.getcwd() + os.sep + 'testvideo'+ os.sep +'vtest.webm'
     cap = cv2.VideoCapture(camid)
-    camid = os.getcwd() + os.sep + 'testvideo'+ os.sep +'vtest.webm'
-    cap = cv2.VideoCapture(camid)
 else:
     camid = 1
     cap = cv2.VideoCapture(camid)
@@ -74,7 +85,7 @@ else:
         cap = cv2.VideoCapture(camid)
         camid += 1
 
-
+# Read in camera/video frame image
 ret, img = cap.read()
 
 
@@ -82,46 +93,76 @@ ret, img = cap.read()
 
 #### TRACKBAR
 def nothing(x):
+    """Summary
+    Small function that allows the trackbar to function
+    """
     pass
 cv2.namedWindow("Input", cv2.WINDOW_NORMAL)
+# Construct trackbars onto input window
 cv2.createTrackbar('theta','Input',0,100,nothing)
 switch = 'Opponency\n'
 cv2.createTrackbar(switch, 'Input',0,1,nothing)
 
 
 def showNonOpponency(C,theta):
+    """Summary
+    This function encapsulates the routine to generate backprojected and cortical views for 
+    the magnocellular pathway retinal ganglion cells
+    Args:
+        C (vector): The sharp retina is passed to the function
+        theta (float): A threshold value is passed to the function
     
+    Returns:
+        merged: Return a merged image of the backprojected view as a numpy image array
+        mergecort: Return a merged image of the cortical view as a numpy image array
+    """
+    # Sample using accelerated retina function
     S = ret1.sample(lateimg) # SURROUND
     S = retina_cuda.convert_to_Piotr(S)
-    #showretina
+    #showretina:
+    #return the modified,rectified imagevectors
     ncentreV,nsurrV = rgc.nonopponency(C,S,theta)
+    # generate packprojected images
     ninverse = ret0.inverse(retina_cuda.convert_from_Piotr(ncentreV.astype(float)))
     ninv_crop = retina.crop(ninverse,int(img.shape[1]/2), int(img.shape[0]/2),loc[0])
    
     ninverse2 = ret1.inverse(retina_cuda.convert_from_Piotr(nsurrV.astype(float)))
     ninv_crop2 = retina.crop(ninverse2,int(img.shape[1]/2), int(img.shape[0]/2),dloc[0])
-
+    # place descriptive text onto generated images
     cv2.putText(ninv_crop,"R+G + ",(1,270), font, 1,(0,255,255),2)
     cv2.putText(ninv_crop2,"R+G - ",(1,270), font, 1,(0,255,255),2)
 
     merged = np.concatenate((ninv_crop, ninv_crop2),axis=1)
     
     #showcortex
+    ## create cortical maps of the imagevectors using accelerated functions
     lposnon = cort0.cort_image_left(retina_cuda.convert_from_Piotr(ncentreV.astype(float)))
     rposnon = cort0.cort_image_right(retina_cuda.convert_from_Piotr(ncentreV.astype(float)))
     lnegnon = cort1.cort_image_left(retina_cuda.convert_from_Piotr(nsurrV.astype(float)))
     rnegnon = cort1.cort_image_right(retina_cuda.convert_from_Piotr(nsurrV.astype(float)))
     pos_cort_img_non = np.concatenate((np.rot90(lposnon),np.rot90(rposnon,k=3)),axis=1)
     neg_cort_img_non = np.concatenate((np.rot90(lnegnon),np.rot90(rnegnon,k=3)),axis=1)
-
+    # merge left and right hemispheres
     mergedcortex = np.concatenate((pos_cort_img_non, neg_cort_img_non),axis=1)
     return merged,mergedcortex
 
 
 def showBPImg(pV,nV):
+    """Summary
+    This function encapsulates the routine to generate rectified backprojected views of 
+    all opponent retinal ganglion cells
+    Args:
+        pV (vector): Positive rectified imagevector
+        nV (vector): Negative rectified imagevector
+    
+    Returns:
+        merge: Return a merged image of all backprojected opponent cells as a numpy image array
+    """
+    # object arrays of the positive and negative images
     inv_crop = np.empty(8, dtype=object)
     inv_crop2 = np.empty(8, dtype=object)
-    for i in range(8):  
+    for i in range(8):
+        # backprojection functions
         inverse = ret0.inverse(retina_cuda.convert_from_Piotr(pV[:,i,:].astype(float)))
         inv_crop[i] = retina.crop(inverse,int(img.shape[1]/2), int(img.shape[0]/2),loc[0])
        
@@ -129,6 +170,7 @@ def showBPImg(pV,nV):
         inv_crop2[i] = retina.crop(inverse2,int(img.shape[1]/2), int(img.shape[0]/2),dloc[0])
         cv2.putText(inv_crop[i],types[i] + " + ",(1,270), font, 1,(0,255,255),2)
         cv2.putText(inv_crop2[i],types[i] + " - ",(1,270), font, 1,(0,255,255),2)
+    # stack all images into a grid
     posRG = np.vstack((inv_crop[:4]))
     negRG = np.vstack((inv_crop2[:4]))
     posYB = np.vstack((inv_crop[4:]))
@@ -139,18 +181,28 @@ def showBPImg(pV,nV):
 
 
 def showCortexImg(pV,nV):
+    """Summary
+    This function encapsulates the routine to generate rectified cortical views of 
+    all opponent retinal ganglion cells
+    Args:
+        pV (vector): Positive rectified imagevector
+        nV (vector): Negative rectified imagevector
+    
+    Returns:
+        mergecort: Return a merged image of all cortical opponent cells as a numpy image array
+    """
+    # object arrays of the positive and negative cortical images
     pos_cort_img = np.empty(8, dtype=object)
     neg_cort_img = np.empty(8, dtype=object)
     for i in range(8):
-        # print len(retina_cuda.convert_from_Piotr(pV[:,i,:].astype(float)))
-        # print pV[:,i,:].astype(float).dtype
+        # accelerated cortical mapping functions
         lpos = cort0.cort_image_left(retina_cuda.convert_from_Piotr(pV[:,i,:].astype(float)))
         rpos = cort0.cort_image_right(retina_cuda.convert_from_Piotr(pV[:,i,:].astype(float)))
         lneg = cort1.cort_image_left(retina_cuda.convert_from_Piotr(nV[:,i,:].astype(float)))
         rneg = cort1.cort_image_right(retina_cuda.convert_from_Piotr(nV[:,i,:].astype(float)))
         pos_cort_img[i] = np.concatenate((np.rot90(lpos),np.rot90(rpos,k=3)),axis=1)
         neg_cort_img[i] = np.concatenate((np.rot90(lneg),np.rot90(rneg,k=3)),axis=1)
-        
+    # stack all images into a grid    
     posRGcort = np.vstack((pos_cort_img[:4]))
     negRGcort = np.vstack((neg_cort_img[:4]))
     posYBcort = np.vstack((pos_cort_img[4:]))
@@ -164,12 +216,17 @@ def showCortexImg(pV,nV):
 
 
 def prepRF(p):
+    """Summary
+    Helper function that is used to pre-generate the cortical map locations, 
+    before the main loop, using CUDA accelerated functions
+    """
     ret0 = retina_cuda.create_retina(loc[p], coeff[p], img.shape, (int(img.shape[1]/2), int(img.shape[0]/2)))
     ret1 = retina_cuda.create_retina(dloc[p], dcoeff[p], img.shape, (int(img.shape[1]/2), int(img.shape[0]/2)))
     cort0 = cortex_cuda.create_cortex_from_fields(loc[p], rgb=True)
     cort1 = cortex_cuda.create_cortex_from_fields(dloc[p],  rgb=True)
     return ret0,ret1,cort0,cort1
 
+# Start of main logic
 ret0,ret1,cort0,cort1 = prepRF(0)
 p = 0
 
@@ -179,27 +236,30 @@ while True:
     if ret is True:
         theta = cv2.getTrackbarPos('theta','Input') / 100.0
         rgcMode = cv2.getTrackbarPos(switch,'Input')
-
+        # sample images
         C = ret0.sample(img) # CENTRE
         S = ret1.sample(img) # SURROUND
 
+        # match vector structuring used in Piotrs model
         C = retina_cuda.convert_to_Piotr(C)
         S = retina_cuda.convert_to_Piotr(S)
 
         cv2.imshow("Input", img)
-        
+        # get image frame properties
         imgsize = (img.shape[0],img.shape[1])
         theta = cv2.getTrackbarPos('theta','Input') / 100.0
 
         cv2.imshow("Input", img)
         
-        # switch opponency mode
+        # generate rectified imagevectors based on the type of opponency
         if rgcMode == 0:
             pV, nV = rgc.opponency(C, S,theta)
         else:
             pV, nV = rgc.doubleopponency(C, S,theta)
 
         rIntensity,cIntensity = showNonOpponency(C, theta)
+
+        # Display functions are called
         cv2.namedWindow("Intensity Responses", cv2.WINDOW_NORMAL)
         cv2.imshow("Intensity Responses", rIntensity)
         cv2.namedWindow("Intensity Responses Cortex", cv2.WINDOW_NORMAL)
@@ -237,7 +297,7 @@ while True:
         elif key == 27: #check for ESC key on numpad
             break
 
-#Run this if cam stops working
+#Ran if camera stops working
 cv2.destroyAllWindows()
 cap.release()
 cv2.VideoCapture(camid).release()

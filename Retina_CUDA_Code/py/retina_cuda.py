@@ -1,3 +1,8 @@
+"""
+@author: Lorinc Balog
+
+https://github.com/lorincbalog/RetinaCUDA
+"""
 import sys
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
