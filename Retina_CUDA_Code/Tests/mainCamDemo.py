@@ -55,7 +55,7 @@ types = ["RG","GR","RGinv","GRinv","BY","YB","BYinv","YBinv"]
 
 showInverse = True
 showCortex = True
-useVideo = True
+useVideo = False
 print "USER KEYBOARD CONTROLS"
 print " + to increase retina size\n - to decrease retina size"
 print "esc - exit\ni - Toggle inverted retinal images\nu - Toggle cortical images"

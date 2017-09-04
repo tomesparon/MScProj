@@ -53,8 +53,6 @@ print "esc - exit\ni - Toggle inverted retinal images\nu - Toggle cortical image
 if useVideo:
     camid = os.getcwd() + os.sep + 'testvideo'+ os.sep +'vtest.webm'
     cap = cv2.VideoCapture(camid)
-    camid = os.getcwd() + os.sep + 'testvideo'+ os.sep +'vtest.webm'
-    cap = cv2.VideoCapture(camid)
 else:
     camid = 1
     cap = cv2.VideoCapture(camid)
