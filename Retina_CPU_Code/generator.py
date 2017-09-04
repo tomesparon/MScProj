@@ -38,7 +38,7 @@ print keystring
 # load Mat file
 tess = scipy.io.loadmat(retina_path)[keystring]
 
-
+# function to display the generated receptive fields
 def preview():
     stdimg_dir = os.getcwd() + os.sep + 'testimage\\'
     print "Using " + os.listdir(stdimg_dir)[0]
@@ -59,13 +59,13 @@ def preview():
     oz_I_crop = retina.crop(oz_I, x, y, ozimek_loc)
     oz_GI_crop = retina.crop(oz_GI, x, y, ozimek_loc)
 
-    # test application of retinal field
+    # test application of retinal receptive field
     plt.figure(figsize=(6,6),num="Test application of retinal field")
     plt.axis('off')
     plt.imshow(oz_I_crop, cmap='gray')
     plt.show()
 
-    #heatmap of retinal field
+    #heatmap of retinal receptive field
     plt.figure(figsize=(6,6),num="Heatmap of retina")
     plt.axis('off')
     plt.imshow(oz_GI_crop, cmap='RdBu')

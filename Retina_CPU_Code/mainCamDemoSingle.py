@@ -1,18 +1,32 @@
 # -*- coding: utf-8 -*-
 """
+Demoing colour opponency and DoG retinal cells with a webcam, displaying only one
+colour opponent species at a given time.
 
-@author: Tom
+@author: Tom Esparon
 
-Demoing colour opponency and DoG
+Attributes:
+    coeff (list): Index of receptive field coefficients for a sharp retina
+    dcoeff (list): Index of receptive field coefficients for larger 1.6x retina
+    loc (list): Index of receptive field coefficients for a sharp retina
+    dloc (list): Index of receptive field coefficients for larger 1.6x retina
+    font (TYPE): Declared a font type for descriptions of cell types
+    i (int): Integer index of the currently selected retina size
+    mat_data (TYPE): Directory location of MAT files
+    showCortex (bool): Boolean toggle to show/hide the cortical images
+    showInverse (bool): Boolean toggle to show/hide the inverted images
+    types (list): List of cell type abbreviated descriptions
+    useVideo (bool): Boolean toggle for using a video stream instead
+
 """
 
 import cv2
 import numpy as np
 import scipy
 import os
-import retina
-import cortex
-import rgc
+import retina # Piotr Ozimek retina model
+import cortex # Piotr Ozimek cortex model
+import rgc # Retinal ganglion cell model
 
 mat_data = os.getcwd() + os.sep + 'ozv1retinas'
 coeff = [0, 0, 0, 0]
@@ -68,8 +82,12 @@ ret, img = cap.read()
 
 #### TRACKBAR
 def nothing(x):
+    """Summary
+    Small function that allows the trackbar to function
+    """
     pass
 cv2.namedWindow("Input", cv2.WINDOW_NORMAL)
+# Construct trackbars onto input window
 cv2.createTrackbar('theta','Input',0,100,nothing)
 switch = 'Opponency\n'
 cv2.createTrackbar(switch, 'Input',0,1,nothing)
@@ -79,7 +97,18 @@ cv2.createTrackbar(species, 'Input',0,7,nothing)
 
 
 def showNonOpponency(C,theta):
-
+    """Summary
+    This function encapsulates the routine to generate backprojected and cortical views for 
+    the magnocellular pathway retinal ganglion cells
+    Args:
+        C (vector): The sharp retina is passed to the function
+        theta (float): A threshold value is passed to the function
+    
+    Returns:
+        merged: Return a merged image of the backprojected view as a numpy image array
+        mergecort: Return a merged image of the cortical view as a numpy image array
+    """
+    # Sample using the other recepetive field, but with a temporally different image, lateimg
     S = retina.sample(lateimg,x,y,dcoeff[i],dloc[i],rgb=True)
 
     ncentreV,nsurrV = rgc.nonopponency(C,S,theta)
@@ -100,13 +129,23 @@ def showNonOpponency(C,theta):
 
 
 def showBPImg(pV,nV,t):
-    # t = 1
+    """Summary
+    This function encapsulates the routine to generate rectified backprojected views of 
+    one opponent retinal ganglion cell
+    Args:
+        pV (vector): Positive rectified imagevector
+        nV (vector): Negative rectified imagevector
+        t (int): Index position of opponent cell species
+    Returns:
+        merge: Return a merged image of all backprojected opponent cells as a numpy image array
+    """
+    # backprojection functions
     inverse = retina.inverse(pV[:,t,:],x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=True)
     inv_crop = retina.crop(inverse,x,y,dloc[i])
 
     inverse2 = retina.inverse(nV[:,t,:],x,y,dcoeff[i],dloc[i], GI, imsize=imgsize,rgb=True)
     inv_crop2 = retina.crop(inverse2,x,y,dloc[i])
-
+    # place descriptions
     cv2.putText(inv_crop,types[t] + " + ",(1,270), font, 1,(0,255,255),2)
     cv2.putText(inv_crop2,types[t] + " - ",(1,270), font, 1,(0,255,255),2)
 
@@ -115,6 +154,17 @@ def showBPImg(pV,nV,t):
 
 
 def showCortexImg(pV,nV,t):
+    """Summary
+    This function encapsulates the routine to generate rectified cortical views of 
+    one opponent retinal ganglion cell type
+    Args:
+        pV (vector): Positive rectified imagevector
+        nV (vector): Negative rectified imagevector
+        t (int): Index position of opponent cell species
+    
+    Returns:
+        mergecort: Return a merged image of all cortical opponent cells as a numpy image array
+    """
     # t = 1
     lpos, rpos = cortex.cort_img(pV[:,t,:], L, L_loc, R, R_loc, cort_size, G)
     lneg, rneg = cortex.cort_img(nV[:,t,:], L, L_loc, R, R_loc, cort_size, G)
@@ -126,6 +176,10 @@ def showCortexImg(pV,nV,t):
 
 
 def prepRF():
+    """Summary
+    Helper function that is used to pre-generate the cortical map locations, 
+    before the main loop
+    """
     global  L, R, L_loc, R_loc, G, cort_size
     L, R = cortex.LRsplit(loc[i])
     L_loc, R_loc = cortex.cort_map(L, R)
@@ -138,28 +192,35 @@ def prepRF():
     global GI
     GI = retina.gauss_norm_img(x, y, dcoeff[i], dloc[i], imsize=imgsize,rgb=True)
 
+
+# Start of main logic
 prepRF()
 
-
+# repeat for every new frame
 while True:
     ret, img = cap.read()
     ret, lateimg = cap.read()
     if ret is True:
+        # get image frame properties
         x = int(img.shape[1]/2)
         y = int(img.shape[0]/2)
         imgsize = (img.shape[0],img.shape[1])
+
         theta = cv2.getTrackbarPos('theta','Input') / 100.0
         rgcMode = cv2.getTrackbarPos(switch,'Input')
+        # get index of the species type
         t = cv2.getTrackbarPos(species,'Input')
- 
+        # sample images
         C = retina.sample(img,x,y,coeff[i],loc[i],rgb=True) # CENTRE
         S = retina.sample(img,x,y,dcoeff[i],dloc[i],rgb=True) # SURROUND
-        
+
+        # generate rectified imagevectors based on the type of opponency
         if rgcMode == 0:
         	pV,nV = rgc.opponency(C,S,theta)
         else:
         	pV,nV = rgc.doubleopponency(C,S,theta)
-
+            
+        # Display functions
         cv2.imshow("Input", img)
 
         rIntensity,cIntensity = showNonOpponency(C,theta)
@@ -197,7 +258,7 @@ while True:
         elif key == 27: #check for ESC key on numpad
             break
 
-#Run this if cam stops working
+#Ran if camera stops working
 cv2.destroyAllWindows()
 cap.release()
 cv2.VideoCapture(camid).release()
